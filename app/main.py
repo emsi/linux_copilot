@@ -15,8 +15,5 @@ app.include_router(api_router)
 
 @app.get("/health")
 def health():
-    """
-    Health check
-    :return:
-    """
+    """Health check"""
     return "OK"
