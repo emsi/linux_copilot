@@ -6,4 +6,6 @@ __pycache__
 *.py[cod]
 *$py.class
 
+data/*
+
 docker-compose.override.yml
