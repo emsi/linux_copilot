@@ -1,0 +1,6 @@
+fastapi~=0.104.1
+fastapi_utils
+starlette~=0.27.0
+pydantic~=2.5.1
+pydantic-settings
+uvicorn

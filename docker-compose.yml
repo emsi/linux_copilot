@@ -1,0 +1,17 @@
+services:
+    backend:
+        image: emsi/linux_copilot
+        build:
+          context: .
+          dockerfile: Dockerfile
+        volumes:
+        - ./app:/app:ro  # for debugging
+        - ./data:/data:rw
+        - ./client:/client:ro
+        ports:
+            - "4578:80"  # for debugging
+        env_file:
+        - .env
+        environment:
+            - HOST=0
+            - PORT=80
