@@ -14,6 +14,7 @@ class Settings(BaseSettings):
 
     DATA_DIR: Path = Path(os.getcwd()) / "data"
     API_KEYS_DIR: Path = DATA_DIR / "api_keys"
+    FILES_DIR: Path = DATA_DIR / "files"
 
     class Config:
         """Read configuration from .env file."""
