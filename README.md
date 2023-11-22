@@ -20,6 +20,7 @@ performs the requested actions.
 - [ ] Connect a vector storage to the GPT to make it more context aware
 - [ ] Supporting binary files like images etc.
 - [ ] Add more actions (awaiting suggestions)
+- [ ] Integrate with HomeKit/HomeAssistant etc.
 
 ## Examples
 ### Asking for available commands
