@@ -132,7 +132,7 @@ and your address changes every time you restart ngrok. You'll learn why that's a
 The paid developer version starts at $8 per month and has a lot of other features so you may consider
 that too: https://ngrok.com/pricing
 
-##### You may also try localtunnel but you are on your own here
+#### You may also try localtunnel but you are on your own here
 https://localtunnel.github.io/www/
 
 ### Exposing the server
