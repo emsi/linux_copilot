@@ -1,12 +1,14 @@
+import asyncio
 import subprocess
 from enum import Enum
 
 import pyperclip
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import HttpUrl
 
 from app.api.api_key import get_api_key
 from app.configuration import settings
+from app.linux.util import is_process_running
 
 
 class Applications(str, Enum):
@@ -39,16 +41,17 @@ commands_router = APIRouter()
 async def screen_saver(action: ScreenSaverAction, _: str = Depends(get_api_key)):
     """Screen saver"""
 
-    process = subprocess.Popen(
-        ["xdg-screensaver", action],
+    process = await asyncio.create_subprocess_exec(
+        "xdg-screensaver",
+        action,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         start_new_session=True,
     )
-    out, err = process.communicate()
+    out, err = await process.communicate()
     if process.returncode != 0:
         print(out.decode(), err.decode())
-        return {"message": f"Screen saver {action} failed"}
+        raise HTTPException(status_code=400, detail=f"Screen saver {action} failed")
     else:
         return {"message": f"Screen saver {action} succeeded"}
 
@@ -57,16 +60,20 @@ async def screen_saver(action: ScreenSaverAction, _: str = Depends(get_api_key))
 async def url_open(url: HttpUrl, _: str = Depends(get_api_key)):
     """Open URL in default browser"""
 
-    process = subprocess.Popen(
-        ["xdg-open", str(url)],
+    process = await asyncio.create_subprocess_exec(
+        "xdg-open",
+        str(url),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         start_new_session=True,
     )
-    out, err = process.communicate()
+
+    out, err = await process.communicate()
     if process.returncode != 0:
-        print(out.decode(), err.decode())
-        return {"message": f"URL {url} open failed"}
+        out_message = out.decode()
+        err_message = err.decode()
+        print(out_message, err_message)
+        raise HTTPException(status_code=400, detail=f"URL {url} open failed: {err_message}")
     else:
         return {"message": f"URL {url} open succeeded"}
 
@@ -76,37 +83,44 @@ async def clipboard_paste(text: str, _: str = Depends(get_api_key)):
     """Copy text to clipboard"""
 
     pyperclip.copy(text)
-    process = subprocess.Popen(
-        ["xclip", "-selection", "clipboard"],
+    process = await asyncio.create_subprocess_exec(
+        "xclip",
+        "-selection",
+        "clipboard",
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         start_new_session=True,
     )
-    out, err = process.communicate(text.encode())
+    out, err = await process.communicate(text.encode())
     if process.returncode != 0:
         print(out.decode(), err.decode())
-        return {"message": f"Copy to clipboard failed"}
+        raise HTTPException(status_code=400, detail=f"Copy to clipboard failed")
     else:
         return {"message": f"Copy to clipboard succeeded"}
 
 
 @commands_router.get("/run")
 async def run(application: Applications, _: str = Depends(get_api_key)):
-    """Run application"""
-
-    process = subprocess.Popen(
-        [application],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+    """Run application in the background and check if it's running."""
+    await asyncio.create_subprocess_exec(
+        application.value,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
         start_new_session=True,
     )
-    out, err = process.communicate()
-    if process.returncode != 0:
-        print(out.decode(), err.decode())
-        return {"message": f"Application {application} failed"}
+
+    # Give the application some time to start and create a window
+    await asyncio.sleep(0.5)  # This is bad but leave it for now
+
+    # Now check if the application is running
+    if await is_process_running(application.value):
+        return {"message": f"Application {application} started successfully"}
     else:
-        return {"message": f"Application {application} succeeded"}
+        # If the application is not running, assume it failed to start
+        raise HTTPException(
+            status_code=400, detail=f"Application {application} failed to start or is not visible"
+        )
 
 
 def _sanitize_file_name(file_name: str) -> str:
@@ -155,13 +169,14 @@ async def open_file(file_name: str, _: str = Depends(get_api_key)):
     This works by invoking xdg-open on the file.
     """
 
-    process = subprocess.Popen(
-        ["xdg-open", str(settings.FILES_DIR / _sanitize_file_name(file_name))],
+    process = await asyncio.create_subprocess_exec(
+        "xdg-open",
+        str(settings.FILES_DIR / _sanitize_file_name(file_name)),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         start_new_session=True,
     )
-    out, err = process.communicate()
+    out, err = await process.communicate()
     if process.returncode != 0:
         print(out.decode(), err.decode())
         return {"message": f"File '{file_name}' open failed"}
